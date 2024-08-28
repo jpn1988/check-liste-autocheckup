@@ -84,7 +84,7 @@ class Section(tk.Frame):
         self.vars.append(star_rating.var)
         self.add_separator()
 
-        self.add_field("Ajouter un commentaire", add_photo_button=False)
+        self.add_comment_field()  # Ajouter un champ de commentaire spécifique
         self.add_separator()
 
     def add_field(self, label_text, add_photo_button=True):
@@ -99,9 +99,9 @@ class Section(tk.Frame):
         button_frame.pack(anchor="w", pady=(0, 10))
 
         rb1 = tk.Radiobutton(button_frame, text="OUI", variable=variable, value="OUI", cursor="hand2", indicatoron=0,
-                             width=10, command=lambda: self.handle_answer(variable, label, button_photo))
+                             width=10, command=lambda: self.handle_answer(variable, label, None))
         rb2 = tk.Radiobutton(button_frame, text="NON", variable=variable, value="NON", cursor="hand2", indicatoron=0,
-                             width=10, command=lambda: self.handle_answer(variable, label))
+                             width=10, command=lambda: self.handle_answer(variable, label, None))
 
         rb1.pack(side="left", padx=(0, 5))  # Ajouter un espace entre les boutons
         rb2.pack(side="left")
@@ -114,18 +114,45 @@ class Section(tk.Frame):
                 button_photo = tk.Button(self.frame, text="📷 Appareil photo", command=lambda: self.upload_photo(label), state="disabled")
             button_photo.pack(anchor="w", padx=20, pady=(0, 10))
 
+    def add_comment_field(self):
+        label = tk.Label(self.frame, text="Ajouter un commentaire ?", anchor="w")
+        label.pack(anchor="w")
+
+        variable = tk.StringVar(value="")
+        self.vars.append(variable)
+
+        # Frame pour les boutons "OUI" et "NON"
+        button_frame = tk.Frame(self.frame)
+        button_frame.pack(anchor="w", pady=(0, 10))
+
+        # Champ de texte pour les commentaires, caché par défaut
+        comment_entry = tk.Text(self.frame, height=3, width=40)
+        comment_entry.pack(anchor="w", padx=20, pady=(5, 10))
+        comment_entry.pack_forget()
+
+        rb1 = tk.Radiobutton(button_frame, text="OUI", variable=variable, value="OUI", cursor="hand2", indicatoron=0,
+                             width=10, command=lambda: self.handle_answer(variable, label, comment_entry))
+        rb2 = tk.Radiobutton(button_frame, text="NON", variable=variable, value="NON", cursor="hand2", indicatoron=0,
+                             width=10, command=lambda: self.handle_answer(variable, label, comment_entry))
+
+        rb1.pack(side="left", padx=(0, 5))
+        rb2.pack(side="left")
+
     def add_separator(self):
         separator = ttk.Separator(self.frame, orient="horizontal")
         separator.pack(fill="x", pady=5)
 
-    def handle_answer(self, variable, label, button_photo=None):
-        if variable.get() == "OUI" and button_photo:
-            button_photo.config(state="normal")
-        else:
-            if "✓" not in label.cget('text'):
-                label.config(text=f"{label.cget('text')} ✓")
-                self.answered_count += 1
-                self.update_button_text()
+    def handle_answer(self, variable, label, comment_entry=None):
+        if variable.get() == "OUI" and comment_entry:
+            comment_entry.pack(anchor="w", padx=20, pady=(5, 10))  # Afficher le champ de commentaire
+        elif comment_entry:
+            comment_entry.pack_forget()  # Masquer le champ de commentaire si "NON" est sélectionné
+        
+        # Ajouter le checkmark lorsque la question est répondue
+        if "✓" not in label.cget('text'):
+            label.config(text=f"{label.cget('text')} ✓")
+            self.answered_count += 1
+            self.update_button_text()
 
     def on_star_selected(self, rating):
         for widget in self.frame.winfo_children():
