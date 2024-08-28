@@ -38,6 +38,121 @@ class StarRating(tk.Frame):
             else:
                 star.config(bg="lightgray", relief=tk.RAISED)
 
+class Section(tk.Frame):
+    def __init__(self, parent, section_name, total_questions, toggle_command):
+        super().__init__(parent)
+        self.section_name = section_name
+        self.total_questions = total_questions
+        self.answered_count = 0
+        self.vars = []
+        self.toggle_command = toggle_command
+
+        self.button = tk.Button(parent, text=f"{section_name} (0/{total_questions})", command=self.toggle_section)
+        self.button.pack(fill="x", padx=10, pady=5)
+
+        self.frame = tk.LabelFrame(parent, text=f"Questions {section_name}")
+        self.frame.pack(fill="both", expand="yes", padx=10, pady=10)
+        self.frame.pack_forget()  # Masquer par défaut
+
+        self.create_questions()
+
+    def create_questions(self):
+        self.add_field("Corrosion")
+        self.add_separator()
+        self.add_field("Rayure")
+        self.add_separator()
+        self.add_field("Impact")
+        self.add_separator()
+        self.add_field("Défaut de peinture")
+        self.add_separator()
+        self.add_field("Défaut d'alignement")
+        self.add_separator()
+        self.add_field("Autre défaut")
+        self.add_separator()
+
+        # Ajout de l'évaluation de l'état visuel général avec des étoiles
+        tk.Label(self.frame, text="Évaluez l’état visuel général de 1 à 5 ?", anchor="w").pack(anchor="w", pady=(10, 0))
+        star_rating = StarRating(self.frame, command=self.on_star_selected)
+        star_rating.pack(anchor="w", padx=20, pady=(0, 10))  # Uniformiser le padding et l'alignement avec les autres éléments
+
+        self.vars.append(star_rating.var)
+
+        # Séparateur entre l'état visuel général et le commentaire
+        self.add_separator()
+
+        # Ajouter la question "Ajouter un commentaire ?"
+        self.add_field("Ajouter un commentaire")
+        self.add_separator()
+
+    def add_field(self, label_text):
+        label = tk.Label(self.frame, text=f"{label_text} ?", anchor="w")
+        label.pack(anchor="w")
+
+        variable = tk.StringVar(value="")
+        self.vars.append(variable)
+
+        # Créez le bouton de prise de photo, désactivé par défaut
+        button_photo = tk.Button(self.frame, text=f"Prenez une photo de {label_text.lower()}", command=lambda: self.upload_photo(label), state="disabled")
+        button_photo.pack(anchor="w", padx=20, pady=(0, 10))  # Uniformiser le padding et l'alignement avec les autres éléments
+
+        # Créez les boutons radio avec des fonctions de rappel pour activer/désactiver le bouton de photo
+        rb1 = tk.Radiobutton(self.frame, text="OUI", variable=variable, value="OUI", cursor="hand2", indicatoron=0,
+                             command=lambda: self.handle_answer(variable, label, button_photo))
+        rb2 = tk.Radiobutton(self.frame, text="NON", variable=variable, value="NON", cursor="hand2", indicatoron=0,
+                             command=lambda: self.handle_answer(variable, label))
+
+        rb1.pack(anchor="w")
+        rb2.pack(anchor="w")
+
+    def add_separator(self):
+        separator = ttk.Separator(self.frame, orient="horizontal")
+        separator.pack(fill="x", pady=5)  # Espacement entre les questions
+
+    def handle_answer(self, variable, label, button_photo=None):
+        # Si "OUI" est sélectionné, activer le bouton de photo
+        if variable.get() == "OUI":
+            button_photo.config(state="normal")
+        else:
+            # Ajouter une coche directement si "NON" est sélectionné
+            if "✓" not in label.cget('text'):
+                label.config(text=f"{label.cget('text')} ✓")
+                self.answered_count += 1
+                self.update_button_text()
+
+    def on_star_selected(self, rating):
+        # Identification précise du label de l'état visuel général
+        for widget in self.frame.winfo_children():
+            if isinstance(widget, tk.Label) and "Évaluez l’état visuel général" in widget.cget("text"):
+                label = widget
+                break
+        
+        # Mise à jour du label avec une coche
+        if "✓" not in label.cget('text'):
+            label.config(text=f"{label.cget('text')} ✓")
+            self.answered_count += 1
+            self.update_button_text()
+
+    def upload_photo(self, label):
+        file = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg;*.jpeg;*.png;*.gif")])
+        if file:
+            messagebox.showinfo("Fichier sélectionné", f"Fichier sélectionné : {file}")
+            if "✓" not in label.cget('text'):
+                label.config(text=f"{label.cget('text')} ✓")
+                self.answered_count += 1
+                self.update_button_text()
+
+    def update_button_text(self):
+        # Met à jour le texte du bouton avec le nombre de questions répondues
+        checkmark = " ✓" if self.answered_count == self.total_questions else ""
+        self.button.config(text=f"{self.section_name} ({self.answered_count}/{self.total_questions}){checkmark}")
+
+    def toggle_section(self):
+        if self.frame.winfo_viewable():
+            self.frame.pack_forget()  # Masquer les questions
+        else:
+            self.toggle_command(self)  # Ferme les autres sections avant d'ouvrir celle-ci
+            self.frame.pack(fill="both", expand="yes", padx=10, pady=10)  # Afficher les questions
+
 class InspectionForm(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -65,141 +180,22 @@ class InspectionForm(tk.Tk):
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        # Liste pour stocker toutes les variables des questions par section
-        self.section_vars = {}
-        self.sections = []  # Pour stocker toutes les sections
-
-        # Création des sections avec boutons pour afficher/masquer
-        self.create_section("Capot", self.scrollable_frame, 8)  # 8 questions dans cette section
-        self.create_section("Parechoc", self.scrollable_frame, 8)  # 8 questions dans cette section
+        # Création des sections
+        self.sections = []
+        self.sections.append(Section(self.scrollable_frame, "Capot", 8, self.close_other_sections))
+        self.sections.append(Section(self.scrollable_frame, "Parechoc", 8, self.close_other_sections))  # Ajout de la section Parechoc
 
         # Bouton de soumission
         self.submit_button = tk.Button(self.scrollable_frame, text="Soumettre", command=self.submit)
         self.submit_button.pack(pady=10)
 
-    def create_section(self, section_name, parent, total_questions):
-        # Créer un cadre pour le bouton et le compteur de questions
-        section_vars = []
-        self.section_vars[section_name] = (section_vars, total_questions)
-
-        button_text = f"{section_name} (0/{total_questions})"
-        button = tk.Button(parent, text=button_text, command=lambda: self.toggle_section(frame))
-        button.pack(fill="x", padx=10, pady=5)
-
-        # Créer un cadre pour contenir les questions de la section
-        frame = tk.LabelFrame(parent, text=f"Questions {section_name}")
-        frame.pack(fill="both", expand="yes", padx=10, pady=10)
-        frame.pack_forget()  # Masquer par défaut
-
-        # Stocker la section dans la liste des sections
-        self.sections.append((button, frame))
-
-        # Ajouter les champs/questions dans la section
-        self.add_field(frame, "1. Corrosion", tk.StringVar(value=""), button)
-        self.add_separator(frame)
-        self.add_field(frame, "2. Rayure", tk.StringVar(value=""), button)
-        self.add_separator(frame)
-        self.add_field(frame, "3. Impact", tk.StringVar(value=""), button)
-        self.add_separator(frame)
-        self.add_field(frame, "4. Défaut de peinture", tk.StringVar(value=""), button)
-        self.add_separator(frame)
-        self.add_field(frame, "5. Défaut d'alignement", tk.StringVar(value=""), button)
-        self.add_separator(frame)
-        self.add_field(frame, "6. Autre défaut", tk.StringVar(value=""), button)
-        self.add_separator(frame)
-
-        # Ajout de l'évaluation de l'état visuel général avec des étoiles
-        tk.Label(frame, text="7. Évaluez l’état visuel général de 1 à 5 ?", anchor="w").pack(anchor="w", pady=(10, 0))
-        star_rating = StarRating(frame, command=lambda rating: self.on_star_selected(star_rating.var, section_name, button))
-        star_rating.pack(anchor="w", padx=20, pady=(0, 10))  # Uniformiser le padding et l'alignement avec les autres éléments
-
-        self.section_vars[section_name][0].append(star_rating.var)
-
-        # Séparateur entre l'état visuel général et le commentaire
-        self.add_separator(frame)
-
-        # Ajouter la question "8. Ajouter un commentaire ?"
-        self.add_field(frame, "8. Ajouter un commentaire", tk.StringVar(value=""), button)
-        self.add_separator(frame)
-
-    def add_field(self, frame, label_text, variable, button):
-        label = tk.Label(frame, text=f"{label_text} ?", anchor="w")
-        label.pack(anchor="w")
-        section_name = button.cget('text').split(' ')[0]  # Récupère le nom de la section à partir du bouton
-
-        self.section_vars[section_name][0].append(variable)  # Stocker la variable pour la validation
-
-        # Créez le bouton de prise de photo, désactivé par défaut
-        button_photo = tk.Button(frame, text=f"Prenez une photo de {label_text.lower()}", command=lambda: self.upload_photo(label, section_name, button), state="disabled")
-        button_photo.pack(anchor="w", padx=20, pady=(0, 10))  # Uniformiser le padding et l'alignement avec les autres éléments
-
-        # Créez les boutons radio avec des fonctions de rappel pour activer/désactiver le bouton de photo
-        rb1 = tk.Radiobutton(frame, text="OUI", variable=variable, value="OUI", cursor="hand2", indicatoron=0,
-                             command=lambda: self.handle_answer(variable, label, section_name, button, button_photo))
-        rb2 = tk.Radiobutton(frame, text="NON", variable=variable, value="NON", cursor="hand2", indicatoron=0,
-                             command=lambda: self.handle_answer(variable, label, section_name, button))
-
-        rb1.pack(anchor="w")
-        rb2.pack(anchor="w")
-
-    def add_separator(self, frame):
-        separator = ttk.Separator(frame, orient="horizontal")
-        separator.pack(fill="x", pady=5)  # Espacement entre les questions
-
-    def handle_answer(self, variable, label, section_name, button, button_photo=None):
-        # Si "OUI" est sélectionné, activer le bouton de photo
-        if variable.get() == "OUI":
-            button_photo.config(state="normal")
-        else:
-            # Ajouter une coche directement si "NON" est sélectionné
-            if "✓" not in label.cget('text'):
-                label.config(text=f"{label.cget('text')} ✓")
-            # Mettre à jour le compteur de questions répondues
-            self.update_button_text(section_name, button)
-
-    def on_star_selected(self, star_var, section_name, button):
-        # Met à jour le label de l'état visuel général avec une coche
-        frame = button.master
-        star_label = frame.winfo_children()[-3]  # Le label de l'état visuel général est le 3ème avant-dernier élément
-        if "✓" not in star_label.cget('text'):
-            star_label.config(text=f"{star_label.cget('text')} ✓")
-
-        # Met à jour le compteur de questions répondues
-        self.update_button_text(section_name, button)
-
-    def upload_photo(self, label, section_name, button):
-        file = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg;*.jpeg;*.png;*.gif")])
-        if file:
-            messagebox.showinfo("Fichier sélectionné", f"Fichier sélectionné : {file}")
-            if "✓" not in label.cget('text'):
-                label.config(text=f"{label.cget('text')} ✓")
-            # Mettre à jour le compteur de questions répondu
-            # Mettre à jour le compteur de questions répondues
-            self.update_button_text(section_name, button)
-
-    def update_button_text(self, section_name, button):
-        # Trouve combien de questions ont été répondues pour la section donnée
-        answered_count = sum(1 for var in self.section_vars[section_name][0] if var.get() and var.get() != "0")
-        total_questions = self.section_vars[section_name][1]
-
-        # Ajoute le symbole de coche si toutes les questions sont remplies
-        checkmark = " ✓" if answered_count == total_questions else ""
-        button.config(text=f"{section_name} ({answered_count}/{total_questions}){checkmark}")
-
-    def toggle_section(self, frame):
-        # Ferme toutes les autres sections
-        for btn, frm in self.sections:
-            if frm != frame:
-                frm.pack_forget()
-
-        # Affiche ou masque la section sélectionnée
-        if frame.winfo_viewable():
-            frame.pack_forget()  # Masquer les questions
-        else:
-            frame.pack(fill="both", expand="yes", padx=10, pady=10)  # Afficher les questions
+    def close_other_sections(self, current_section):
+        for section in self.sections:
+            if section != current_section and section.frame.winfo_viewable():
+                section.frame.pack_forget()
 
     def submit(self):
-        all_answered = all(all(var.get() and var.get() != "0" for var in section[0]) for section in self.section_vars.values())
+        all_answered = all(section.answered_count == section.total_questions for section in self.sections)
         if not all_answered:
             messagebox.showwarning("Formulaire incomplet", "Veuillez répondre à toutes les questions avant de soumettre le formulaire.")
         else:
