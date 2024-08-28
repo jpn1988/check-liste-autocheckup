@@ -70,8 +70,8 @@ class InspectionForm(tk.Tk):
         self.sections = []  # Pour stocker toutes les sections
 
         # Création des sections avec boutons pour afficher/masquer
-        self.create_section("Capot", self.scrollable_frame, 7)  # 7 questions dans cette section
-        self.create_section("Parechoc", self.scrollable_frame, 7)  # 7 questions dans cette section
+        self.create_section("Capot", self.scrollable_frame, 8)  # 8 questions dans cette section
+        self.create_section("Parechoc", self.scrollable_frame, 8)  # 8 questions dans cette section
 
         # Bouton de soumission
         self.submit_button = tk.Button(self.scrollable_frame, text="Soumettre", command=self.submit)
@@ -105,10 +105,10 @@ class InspectionForm(tk.Tk):
         self.add_separator(frame)
         self.add_field(frame, "Défaut d'alignement", tk.StringVar(value=""), button)
         self.add_separator(frame)
-        self.add_field(frame, "Autre défaut", tk.StringVar(value=""), button)  # Suppression de has_description=True
+        self.add_field(frame, "Autre défaut", tk.StringVar(value=""), button)
+        self.add_separator(frame)
 
         # Ajout de l'évaluation de l'état visuel général avec des étoiles
-        self.add_separator(frame)
         tk.Label(frame, text="Évaluez l’état visuel général de 1 à 5 ?", anchor="w").pack(anchor="w", pady=(10, 0))
         star_rating = StarRating(frame, command=lambda rating: self.on_star_selected(star_rating.var, button))
         star_rating.pack(anchor="w", padx=20, pady=(0, 10))  # Uniformiser le padding et l'alignement avec les autres éléments
@@ -119,6 +119,11 @@ class InspectionForm(tk.Tk):
         # Bouton pour prendre une photo du composant complet
         photo_button = tk.Button(frame, text="Prenez une photo du composant complet", command=self.upload_photo)
         photo_button.pack(anchor="w", padx=20, pady=(0, 10))
+        self.add_separator(frame)
+
+        # Ajouter la question "Ajouter un commentaire ?"
+        self.add_field(frame, "Ajouter un commentaire", tk.StringVar(value=""), button)
+        self.add_separator(frame)
 
     def add_field(self, frame, label_text, variable, button):
         tk.Label(frame, text=f"{label_text} ?", anchor="w").pack(anchor="w")
@@ -126,19 +131,18 @@ class InspectionForm(tk.Tk):
 
         self.section_vars[section_name][0].append(variable)  # Stocker la variable pour la validation
 
-        rb1 = tk.Radiobutton(frame, text="OUI", variable=variable, value="OUI", cursor="hand2", indicatoron=0,
-                             command=lambda: self.on_answer_selected(variable, button))
-        rb2 = tk.Radiobutton(frame, text="NON", variable=variable, value="NON", cursor="hand2", indicatoron=0,
-                             command=lambda: self.on_answer_selected(variable, button))
-        
-        rb1.pack(anchor="w")
-        rb2.pack(anchor="w")
-
+        # Créez le bouton de prise de photo, désactivé par défaut
         button_photo = tk.Button(frame, text=f"Prenez une photo de {label_text.lower()}", command=self.upload_photo, state="disabled")
         button_photo.pack(anchor="w", padx=20, pady=(0, 10))  # Uniformiser le padding et l'alignement avec les autres éléments
 
-        # Assurez-vous que les boutons de prise de photo sont désactivés initialement
-        self.toggle_photo_buttons(variable, button_photo)
+        # Créez les boutons radio avec des fonctions de rappel pour activer/désactiver le bouton de photo
+        rb1 = tk.Radiobutton(frame, text="OUI", variable=variable, value="OUI", cursor="hand2", indicatoron=0,
+                             command=lambda: self.toggle_photo_buttons(variable, button_photo))
+        rb2 = tk.Radiobutton(frame, text="NON", variable=variable, value="NON", cursor="hand2", indicatoron=0,
+                             command=lambda: self.toggle_photo_buttons(variable, button_photo))
+
+        rb1.pack(anchor="w")
+        rb2.pack(anchor="w")
 
     def add_separator(self, frame):
         separator = ttk.Separator(frame, orient="horizontal")
@@ -164,10 +168,11 @@ class InspectionForm(tk.Tk):
         button.config(text=f"{section_name} ({answered_count}/{total_questions}){checkmark}")
 
     def toggle_photo_buttons(self, variable, button):
+        # Active le bouton de photo si "OUI" est sélectionné, sinon il reste désactivé
         if variable.get() == "OUI":
-            button.config(state="normal")
+            button.config(state="normal")  # Active le bouton si "OUI" est sélectionné
         else:
-            button.config(state="disabled")
+            button.config(state="disabled")  # Désactive le bouton si "NON" est sélectionné
 
     def toggle_section(self, frame):
         # Ferme toutes les autres sections
