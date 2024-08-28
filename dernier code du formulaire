@@ -1,0 +1,125 @@
+import tkinter as tk
+from tkinter import filedialog, messagebox
+
+class InspectionForm(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("Inspection de l'éclairage et du vitrage")
+        self.geometry("600x800")  # Fixe une taille initiale
+
+        # Création du cadre principal avec barre de défilement
+        container = tk.Frame(self)
+        container.pack(fill="both", expand=True)
+
+        canvas = tk.Canvas(container)
+        scrollbar = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        self.scrollable_frame = tk.Frame(canvas)
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(
+                scrollregion=canvas.bbox("all")
+            )
+        )
+
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Création des sections avec boutons pour afficher/masquer
+        self.create_section("Capot", self.scrollable_frame)
+        self.create_section("Parechoc", self.scrollable_frame)
+
+        # Bouton de soumission
+        self.submit_button = tk.Button(self.scrollable_frame, text="Soumettre", command=self.submit)
+        self.submit_button.pack(pady=10)
+
+    def create_section(self, section_name, parent):
+        # Créer un bouton pour afficher/masquer la section
+        button = tk.Button(parent, text=section_name, command=lambda: self.toggle_section(frame))
+        button.pack(fill="x", padx=10, pady=5)
+        
+        # Créer un cadre pour contenir les questions de la section
+        frame = tk.LabelFrame(parent, text=f"Questions {section_name}")
+        frame.pack(fill="both", expand="yes", padx=10, pady=10)
+        
+        # Ajouter les champs/questions dans la section
+        self.add_field(frame, "Corrosion", tk.StringVar(value=""))
+        self.add_field(frame, "Rayure", tk.StringVar(value=""))
+        self.add_field(frame, "Impact", tk.StringVar(value=""))
+        self.add_field(frame, "Défaut de peinture", tk.StringVar(value=""))
+        self.add_field(frame, "Défaut d'alignement", tk.StringVar(value=""))
+        self.add_field(frame, "Autre défaut", tk.StringVar(value=""), has_description=True)
+        
+        tk.Label(frame, text="Évaluez l’état visuel général de 1 à 5 ?").pack(anchor="w")
+        scale = tk.Scale(frame, from_=1, to=5, orient=tk.HORIZONTAL)
+        scale.pack(anchor="w")
+
+        tk.Button(frame, text="Prenez une photo du composant complet", command=self.upload_photo).pack(anchor="w")
+
+        # Les questions sont affichées par défaut
+        frame.pack(fill="both", expand="yes", padx=10, pady=10)
+
+    def add_field(self, frame, label_text, variable, has_description=False):
+        tk.Label(frame, text=f"{label_text} ?").pack(anchor="w")
+        rb1 = tk.Radiobutton(frame, text="OUI", variable=variable, value="OUI", cursor="hand2", indicatoron=0)
+        rb2 = tk.Radiobutton(frame, text="NON", variable=variable, value="NON", cursor="hand2", indicatoron=0)
+        
+        rb1.bind("<Enter>", lambda e: e.widget.config(relief=tk.RAISED))
+        rb1.bind("<Leave>", lambda e: e.widget.config(relief=tk.FLAT))
+        rb1.bind("<Button-1>", lambda e: self.select_radio(variable, "OUI"))
+
+        rb2.bind("<Enter>", lambda e: e.widget.config(relief=tk.RAISED))
+        rb2.bind("<Leave>", lambda e: e.widget.config(relief=tk.FLAT))
+        rb2.bind("<Button-1>", lambda e: self.select_radio(variable, "NON"))
+
+        rb1.pack(anchor="w")
+        rb2.pack(anchor="w")
+
+        button = tk.Button(frame, text=f"Prenez une photo de {label_text.lower()}", command=self.upload_photo, state="disabled")
+        button.pack(anchor="w")
+
+        desc = None
+        if has_description:
+            desc = tk.Entry(frame, width=50, state="disabled")
+            desc.pack(anchor="w")
+
+        # Assurez-vous que les boutons de prise de photo sont désactivés initialement
+        self.toggle_photo_buttons(variable, button, desc)
+
+    def select_radio(self, variable, value):
+        variable.set(value)
+
+    def toggle_photo_buttons(self, variable, button, desc=None):
+        if variable.get() == "OUI":
+            button.config(state="normal")
+            if desc:
+                desc.config(state="normal")
+        else:
+            button.config(state="disabled")
+            if desc:
+                desc.config(state="disabled")
+
+    def toggle_section(self, frame):
+        if frame.winfo_viewable():
+            frame.pack_forget()  # Masquer les questions
+        else:
+            frame.pack(fill="both", expand="yes", padx=10, pady=10)  # Afficher les questions
+
+    def upload_photo(self):
+        file = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg;*.jpeg;*.png;*.gif")])
+        if file:
+            messagebox.showinfo("Fichier sélectionné", f"Fichier sélectionné : {file}")
+
+    def submit(self):
+        response = messagebox.askyesno("Confirmation", "Voulez-vous vraiment soumettre le formulaire ?")
+        if response:
+            messagebox.showinfo("Soumission", "Formulaire soumis avec succès !")
+        else:
+            messagebox.showinfo("Annulation", "Soumission annulée.")
+
+if __name__ == "__main__":
+    app = InspectionForm()
+    app.mainloop()
