@@ -94,20 +94,24 @@ class Section(tk.Frame):
         variable = tk.StringVar(value="")
         self.vars.append(variable)
 
-        rb1 = tk.Radiobutton(self.frame, text="OUI", variable=variable, value="OUI", cursor="hand2", indicatoron=0,
-                             command=lambda: self.handle_answer(variable, label, button_photo))
-        rb2 = tk.Radiobutton(self.frame, text="NON", variable=variable, value="NON", cursor="hand2", indicatoron=0,
-                             command=lambda: self.handle_answer(variable, label))
+        # Création d'un Frame pour contenir les boutons OUI et NON côte à côte
+        button_frame = tk.Frame(self.frame)
+        button_frame.pack(anchor="w", pady=(0, 10))
 
-        rb1.pack(anchor="w")
-        rb2.pack(anchor="w")
+        rb1 = tk.Radiobutton(button_frame, text="OUI", variable=variable, value="OUI", cursor="hand2", indicatoron=0,
+                             width=10, command=lambda: self.handle_answer(variable, label, button_photo))
+        rb2 = tk.Radiobutton(button_frame, text="NON", variable=variable, value="NON", cursor="hand2", indicatoron=0,
+                             width=10, command=lambda: self.handle_answer(variable, label))
+
+        rb1.pack(side="left", padx=(0, 5))  # Ajouter un espace entre les boutons
+        rb2.pack(side="left")
 
         button_photo = None
         if add_photo_button:
             if self.camera_image:
-                button_photo = tk.Button(self.frame, image=self.camera_image, command=lambda: self.upload_photo(label), state="disabled")
+                button_photo = tk.Button(self.frame, image=self.camera_image, text="Appareil photo", compound="left", command=lambda: self.upload_photo(label), state="disabled")
             else:
-                button_photo = tk.Button(self.frame, text="📷", command=lambda: self.upload_photo(label), state="disabled")
+                button_photo = tk.Button(self.frame, text="📷 Appareil photo", command=lambda: self.upload_photo(label), state="disabled")
             button_photo.pack(anchor="w", padx=20, pady=(0, 10))
 
     def add_separator(self):
