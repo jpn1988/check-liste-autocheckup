@@ -91,10 +91,6 @@ class Section(tk.Frame):
         variable = tk.StringVar(value="")
         self.vars.append(variable)
 
-        # Créez le bouton de prise de photo, désactivé par défaut
-        button_photo = tk.Button(self.frame, text=f"Prenez une photo de {label_text.lower()}", command=lambda: self.upload_photo(label), state="disabled")
-        button_photo.pack(anchor="w", padx=20, pady=(0, 10))  # Uniformiser le padding et l'alignement avec les autres éléments
-
         # Créez les boutons radio avec des fonctions de rappel pour activer/désactiver le bouton de photo
         rb1 = tk.Radiobutton(self.frame, text="OUI", variable=variable, value="OUI", cursor="hand2", indicatoron=0,
                              command=lambda: self.handle_answer(variable, label, button_photo))
@@ -104,13 +100,17 @@ class Section(tk.Frame):
         rb1.pack(anchor="w")
         rb2.pack(anchor="w")
 
+        # Créez le bouton de prise de photo, désactivé par défaut, placé sous les boutons radio
+        button_photo = tk.Button(self.frame, text=f"Prenez une photo de {label_text.lower()}", command=lambda: self.upload_photo(label), state="disabled")
+        button_photo.pack(anchor="w", padx=20, pady=(0, 10))  # Uniformiser le padding et l'alignement avec les autres éléments
+
     def add_separator(self):
         separator = ttk.Separator(self.frame, orient="horizontal")
         separator.pack(fill="x", pady=5)  # Espacement entre les questions
 
     def handle_answer(self, variable, label, button_photo=None):
         # Si "OUI" est sélectionné, activer le bouton de photo
-        if variable.get() == "OUI":
+        if variable.get() == "OUI" and button_photo:
             button_photo.config(state="normal")
         else:
             # Ajouter une coche directement si "NON" est sélectionné
