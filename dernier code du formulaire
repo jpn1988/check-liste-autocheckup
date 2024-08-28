@@ -1,6 +1,45 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
+class StarRating(tk.Frame):
+    def __init__(self, parent, max_stars=5, command=None):
+        super().__init__(parent)
+        self.command = command
+        self.stars = []
+        self.var = tk.IntVar(value=0)  # Variable pour stocker la note sélectionnée
+
+        for i in range(1, max_stars + 1):
+            star = tk.Label(self, text=f"{i}", width=2, relief=tk.RAISED, bg="lightgray")
+            star.grid(row=0, column=i-1, padx=2)
+            star.bind("<Button-1>", self.on_click)
+            star.bind("<Enter>", self.on_enter)
+            star.bind("<Leave>", self.on_leave)
+            self.stars.append(star)
+
+    def on_click(self, event):
+        # Récupère l'index de l'étoile cliquée
+        selected_star = int(event.widget.cget("text"))
+        self.var.set(selected_star)
+        self.update_stars(selected_star)
+        if self.command:
+            self.command(selected_star)
+
+    def on_enter(self, event):
+        # Highlight des étoiles survolées
+        hover_star = int(event.widget.cget("text"))
+        self.update_stars(hover_star)
+
+    def on_leave(self, event):
+        # Réinitialise l'état des étoiles en fonction de la sélection actuelle
+        self.update_stars(self.var.get())
+
+    def update_stars(self, selected_star):
+        for i, star in enumerate(self.stars, start=1):
+            if i <= selected_star:
+                star.config(bg="yellow", relief=tk.SUNKEN)
+            else:
+                star.config(bg="lightgray", relief=tk.RAISED)
+
 class InspectionForm(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -28,58 +67,65 @@ class InspectionForm(tk.Tk):
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
+        # Liste pour stocker toutes les variables des questions par section
+        self.section_vars = {}
+
         # Création des sections avec boutons pour afficher/masquer
-        self.create_section("Capot", self.scrollable_frame)
-        self.create_section("Parechoc", self.scrollable_frame)
+        self.create_section("Capot", self.scrollable_frame, 7)  # 7 questions dans cette section
+        self.create_section("Parechoc", self.scrollable_frame, 7)  # 7 questions dans cette section
 
         # Bouton de soumission
         self.submit_button = tk.Button(self.scrollable_frame, text="Soumettre", command=self.submit)
         self.submit_button.pack(pady=10)
 
-    def create_section(self, section_name, parent):
-        # Créer un bouton pour afficher/masquer la section
-        button = tk.Button(parent, text=section_name, command=lambda: self.toggle_section(frame))
+    def create_section(self, section_name, parent, total_questions):
+        # Créer un cadre pour le bouton et le compteur de questions
+        section_vars = []
+        self.section_vars[section_name] = (section_vars, total_questions)
+
+        button_text = f"{section_name} (0/{total_questions})"
+        button = tk.Button(parent, text=button_text, command=lambda: self.toggle_section(frame))
         button.pack(fill="x", padx=10, pady=5)
-        
+
         # Créer un cadre pour contenir les questions de la section
         frame = tk.LabelFrame(parent, text=f"Questions {section_name}")
         frame.pack(fill="both", expand="yes", padx=10, pady=10)
-        
+        frame.pack_forget()  # Masquer par défaut
+
         # Ajouter les champs/questions dans la section
-        self.add_field(frame, "Corrosion", tk.StringVar(value=""))
-        self.add_field(frame, "Rayure", tk.StringVar(value=""))
-        self.add_field(frame, "Impact", tk.StringVar(value=""))
-        self.add_field(frame, "Défaut de peinture", tk.StringVar(value=""))
-        self.add_field(frame, "Défaut d'alignement", tk.StringVar(value=""))
-        self.add_field(frame, "Autre défaut", tk.StringVar(value=""), has_description=True)
-        
+        self.add_field(frame, "Corrosion", tk.StringVar(value=""), button)
+        self.add_field(frame, "Rayure", tk.StringVar(value=""), button)
+        self.add_field(frame, "Impact", tk.StringVar(value=""), button)
+        self.add_field(frame, "Défaut de peinture", tk.StringVar(value=""), button)
+        self.add_field(frame, "Défaut d'alignement", tk.StringVar(value=""), button)
+        self.add_field(frame, "Autre défaut", tk.StringVar(value=""), button, has_description=True)
+
+        # Ajout de l'évaluation de l'état visuel général avec des étoiles
         tk.Label(frame, text="Évaluez l’état visuel général de 1 à 5 ?").pack(anchor="w")
-        scale = tk.Scale(frame, from_=1, to=5, orient=tk.HORIZONTAL)
-        scale.pack(anchor="w")
+        star_rating = StarRating(frame, command=lambda rating: self.on_star_selected(star_rating.var, button))
+        star_rating.pack(anchor="w")
+        
+        # Ajout de l'évaluation dans les variables de la section
+        self.section_vars[section_name][0].append(star_rating.var)
 
         tk.Button(frame, text="Prenez une photo du composant complet", command=self.upload_photo).pack(anchor="w")
 
-        # Les questions sont affichées par défaut
-        frame.pack(fill="both", expand="yes", padx=10, pady=10)
-
-    def add_field(self, frame, label_text, variable, has_description=False):
+    def add_field(self, frame, label_text, variable, button, has_description=False):
         tk.Label(frame, text=f"{label_text} ?").pack(anchor="w")
-        rb1 = tk.Radiobutton(frame, text="OUI", variable=variable, value="OUI", cursor="hand2", indicatoron=0)
-        rb2 = tk.Radiobutton(frame, text="NON", variable=variable, value="NON", cursor="hand2", indicatoron=0)
+        section_name = button.cget('text').split(' ')[0]  # Récupère le nom de la section à partir du bouton
+
+        self.section_vars[section_name][0].append(variable)  # Stocker la variable pour la validation
+
+        rb1 = tk.Radiobutton(frame, text="OUI", variable=variable, value="OUI", cursor="hand2", indicatoron=0,
+                             command=lambda: self.on_answer_selected(variable, button))
+        rb2 = tk.Radiobutton(frame, text="NON", variable=variable, value="NON", cursor="hand2", indicatoron=0,
+                             command=lambda: self.on_answer_selected(variable, button))
         
-        rb1.bind("<Enter>", lambda e: e.widget.config(relief=tk.RAISED))
-        rb1.bind("<Leave>", lambda e: e.widget.config(relief=tk.FLAT))
-        rb1.bind("<Button-1>", lambda e: self.select_radio(variable, "OUI"))
-
-        rb2.bind("<Enter>", lambda e: e.widget.config(relief=tk.RAISED))
-        rb2.bind("<Leave>", lambda e: e.widget.config(relief=tk.FLAT))
-        rb2.bind("<Button-1>", lambda e: self.select_radio(variable, "NON"))
-
         rb1.pack(anchor="w")
         rb2.pack(anchor="w")
 
-        button = tk.Button(frame, text=f"Prenez une photo de {label_text.lower()}", command=self.upload_photo, state="disabled")
-        button.pack(anchor="w")
+        button_photo = tk.Button(frame, text=f"Prenez une photo de {label_text.lower()}", command=self.upload_photo, state="disabled")
+        button_photo.pack(anchor="w")
 
         desc = None
         if has_description:
@@ -87,10 +133,23 @@ class InspectionForm(tk.Tk):
             desc.pack(anchor="w")
 
         # Assurez-vous que les boutons de prise de photo sont désactivés initialement
-        self.toggle_photo_buttons(variable, button, desc)
+        self.toggle_photo_buttons(variable, button_photo, desc)
 
-    def select_radio(self, variable, value):
-        variable.set(value)
+    def on_answer_selected(self, variable, button):
+        # Met à jour le compteur de questions répondues
+        section_name = button.cget('text').split(' ')[0]  # Récupère le nom de la section
+        self.update_button_text(section_name, button)
+
+    def on_star_selected(self, star_var, button):
+        # Met à jour le compteur de questions répondues lorsqu'une étoile est sélectionnée
+        section_name = button.cget('text').split(' ')[0]  # Récupère le nom de la section
+        self.update_button_text(section_name, button)
+
+    def update_button_text(self, section_name, button):
+        # Trouve combien de questions ont été répondues pour la section donnée
+        answered_count = sum(1 for var in self.section_vars[section_name][0] if var.get() and var.get() != "0")
+        total_questions = self.section_vars[section_name][1]
+        button.config(text=f"{section_name} ({answered_count}/{total_questions})")
 
     def toggle_photo_buttons(self, variable, button, desc=None):
         if variable.get() == "OUI":
@@ -114,11 +173,15 @@ class InspectionForm(tk.Tk):
             messagebox.showinfo("Fichier sélectionné", f"Fichier sélectionné : {file}")
 
     def submit(self):
-        response = messagebox.askyesno("Confirmation", "Voulez-vous vraiment soumettre le formulaire ?")
-        if response:
-            messagebox.showinfo("Soumission", "Formulaire soumis avec succès !")
+        all_answered = all(all(var.get() and var.get() != "0" for var in section[0]) for section in self.section_vars.values())
+        if not all_answered:
+            messagebox.showwarning("Formulaire incomplet", "Veuillez répondre à toutes les questions avant de soumettre le formulaire.")
         else:
-            messagebox.showinfo("Annulation", "Soumission annulée.")
+            response = messagebox.askyesno("Confirmation", "Voulez-vous vraiment soumettre le formulaire ?")
+            if response:
+                messagebox.showinfo("Soumission", "Formulaire soumis avec succès !")
+            else:
+                messagebox.showinfo("Annulation", "Soumission annulée.")
 
 if __name__ == "__main__":
     app = InspectionForm()
