@@ -17,7 +17,6 @@ class StarRating(tk.Frame):
             self.stars.append(star)
 
     def on_click(self, event):
-        # Récupère l'index de l'étoile cliquée
         selected_star = int(event.widget.cget("text"))
         self.var.set(selected_star)
         self.update_stars(selected_star)
@@ -25,12 +24,10 @@ class StarRating(tk.Frame):
             self.command(selected_star)
 
     def on_enter(self, event):
-        # Highlight des étoiles survolées
         hover_star = int(event.widget.cget("text"))
         self.update_stars(hover_star)
 
     def on_leave(self, event):
-        # Réinitialise l'état des étoiles en fonction de la sélection actuelle
         self.update_stars(self.var.get())
 
     def update_stars(self, selected_star):
@@ -69,6 +66,7 @@ class InspectionForm(tk.Tk):
 
         # Liste pour stocker toutes les variables des questions par section
         self.section_vars = {}
+        self.sections = []  # Pour stocker toutes les sections
 
         # Création des sections avec boutons pour afficher/masquer
         self.create_section("Capot", self.scrollable_frame, 7)  # 7 questions dans cette section
@@ -91,6 +89,9 @@ class InspectionForm(tk.Tk):
         frame = tk.LabelFrame(parent, text=f"Questions {section_name}")
         frame.pack(fill="both", expand="yes", padx=10, pady=10)
         frame.pack_forget()  # Masquer par défaut
+
+        # Stocker la section dans la liste des sections
+        self.sections.append((button, frame))
 
         # Ajouter les champs/questions dans la section
         self.add_field(frame, "Corrosion", tk.StringVar(value=""), button)
@@ -149,7 +150,10 @@ class InspectionForm(tk.Tk):
         # Trouve combien de questions ont été répondues pour la section donnée
         answered_count = sum(1 for var in self.section_vars[section_name][0] if var.get() and var.get() != "0")
         total_questions = self.section_vars[section_name][1]
-        button.config(text=f"{section_name} ({answered_count}/{total_questions})")
+
+        # Ajoute le symbole de vue si toutes les questions sont remplies
+        checkmark = " ✓" if answered_count == total_questions else ""
+        button.config(text=f"{section_name} ({answered_count}/{total_questions}){checkmark}")
 
     def toggle_photo_buttons(self, variable, button, desc=None):
         if variable.get() == "OUI":
@@ -162,6 +166,12 @@ class InspectionForm(tk.Tk):
                 desc.config(state="disabled")
 
     def toggle_section(self, frame):
+        # Ferme toutes les autres sections
+        for btn, frm in self.sections:
+            if frm != frame:
+                frm.pack_forget()
+
+        # Affiche ou masque la section sélectionnée
         if frame.winfo_viewable():
             frame.pack_forget()  # Masquer les questions
         else:
