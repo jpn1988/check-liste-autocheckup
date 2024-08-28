@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
+from tkinter import ttk  # Importation nécessaire pour utiliser ttk.Separator
 
 class StarRating(tk.Frame):
     def __init__(self, parent, max_stars=5, command=None):
@@ -95,24 +96,32 @@ class InspectionForm(tk.Tk):
 
         # Ajouter les champs/questions dans la section
         self.add_field(frame, "Corrosion", tk.StringVar(value=""), button)
+        self.add_separator(frame)
         self.add_field(frame, "Rayure", tk.StringVar(value=""), button)
+        self.add_separator(frame)
         self.add_field(frame, "Impact", tk.StringVar(value=""), button)
+        self.add_separator(frame)
         self.add_field(frame, "Défaut de peinture", tk.StringVar(value=""), button)
+        self.add_separator(frame)
         self.add_field(frame, "Défaut d'alignement", tk.StringVar(value=""), button)
-        self.add_field(frame, "Autre défaut", tk.StringVar(value=""), button, has_description=True)
+        self.add_separator(frame)
+        self.add_field(frame, "Autre défaut", tk.StringVar(value=""), button)  # Suppression de has_description=True
 
         # Ajout de l'évaluation de l'état visuel général avec des étoiles
-        tk.Label(frame, text="Évaluez l’état visuel général de 1 à 5 ?").pack(anchor="w")
+        self.add_separator(frame)
+        tk.Label(frame, text="Évaluez l’état visuel général de 1 à 5 ?", anchor="w").pack(anchor="w", pady=(10, 0))
         star_rating = StarRating(frame, command=lambda rating: self.on_star_selected(star_rating.var, button))
-        star_rating.pack(anchor="w")
+        star_rating.pack(anchor="w", padx=20, pady=(0, 10))  # Uniformiser le padding et l'alignement avec les autres éléments
         
         # Ajout de l'évaluation dans les variables de la section
         self.section_vars[section_name][0].append(star_rating.var)
 
-        tk.Button(frame, text="Prenez une photo du composant complet", command=self.upload_photo).pack(anchor="w")
+        # Bouton pour prendre une photo du composant complet
+        photo_button = tk.Button(frame, text="Prenez une photo du composant complet", command=self.upload_photo)
+        photo_button.pack(anchor="w", padx=20, pady=(0, 10))
 
-    def add_field(self, frame, label_text, variable, button, has_description=False):
-        tk.Label(frame, text=f"{label_text} ?").pack(anchor="w")
+    def add_field(self, frame, label_text, variable, button):
+        tk.Label(frame, text=f"{label_text} ?", anchor="w").pack(anchor="w")
         section_name = button.cget('text').split(' ')[0]  # Récupère le nom de la section à partir du bouton
 
         self.section_vars[section_name][0].append(variable)  # Stocker la variable pour la validation
@@ -126,15 +135,14 @@ class InspectionForm(tk.Tk):
         rb2.pack(anchor="w")
 
         button_photo = tk.Button(frame, text=f"Prenez une photo de {label_text.lower()}", command=self.upload_photo, state="disabled")
-        button_photo.pack(anchor="w")
-
-        desc = None
-        if has_description:
-            desc = tk.Entry(frame, width=50, state="disabled")
-            desc.pack(anchor="w")
+        button_photo.pack(anchor="w", padx=20, pady=(0, 10))  # Uniformiser le padding et l'alignement avec les autres éléments
 
         # Assurez-vous que les boutons de prise de photo sont désactivés initialement
-        self.toggle_photo_buttons(variable, button_photo, desc)
+        self.toggle_photo_buttons(variable, button_photo)
+
+    def add_separator(self, frame):
+        separator = ttk.Separator(frame, orient="horizontal")
+        separator.pack(fill="x", pady=5)  # Espacement entre les questions
 
     def on_answer_selected(self, variable, button):
         # Met à jour le compteur de questions répondues
@@ -155,15 +163,11 @@ class InspectionForm(tk.Tk):
         checkmark = " ✓" if answered_count == total_questions else ""
         button.config(text=f"{section_name} ({answered_count}/{total_questions}){checkmark}")
 
-    def toggle_photo_buttons(self, variable, button, desc=None):
+    def toggle_photo_buttons(self, variable, button):
         if variable.get() == "OUI":
             button.config(state="normal")
-            if desc:
-                desc.config(state="normal")
         else:
             button.config(state="disabled")
-            if desc:
-                desc.config(state="disabled")
 
     def toggle_section(self, frame):
         # Ferme toutes les autres sections
