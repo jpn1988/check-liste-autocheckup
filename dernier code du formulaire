@@ -116,11 +116,6 @@ class InspectionForm(tk.Tk):
         # Ajout de l'évaluation dans les variables de la section
         self.section_vars[section_name][0].append(star_rating.var)
 
-        # Bouton pour prendre une photo du composant complet
-        photo_button = tk.Button(frame, text="Prenez une photo du composant complet", command=self.upload_photo)
-        photo_button.pack(anchor="w", padx=20, pady=(0, 10))
-        self.add_separator(frame)
-
         # Ajouter la question "Ajouter un commentaire ?"
         self.add_field(frame, "Ajouter un commentaire", tk.StringVar(value=""), button)
         self.add_separator(frame)
@@ -187,6 +182,8 @@ class InspectionForm(tk.Tk):
             frame.pack(fill="both", expand="yes", padx=10, pady=10)  # Afficher les questions
 
     def upload_photo(self):
+        file = filed
+    def upload_photo(self):
         file = filedialog.askopenfilename(filetypes=[("Image files", "*.jpg;*.jpeg;*.png;*.gif")])
         if file:
             messagebox.showinfo("Fichier sélectionné", f"Fichier sélectionné : {file}")
@@ -197,7 +194,7 @@ class InspectionForm(tk.Tk):
             messagebox.showwarning("Formulaire incomplet", "Veuillez répondre à toutes les questions avant de soumettre le formulaire.")
         else:
             response = messagebox.askyesno("Confirmation", "Voulez-vous vraiment soumettre le formulaire ?")
-            if response:
+            if réponse:
                 messagebox.showinfo("Soumission", "Formulaire soumis avec succès !")
             else:
                 messagebox.showinfo("Annulation", "Soumission annulée.")
